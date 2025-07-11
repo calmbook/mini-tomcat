@@ -28,10 +28,11 @@ public class HttpServer {
         }
         // 一直接收新的请求
         while (true) {
+            Socket socket = null;
             try {
                 // 阻塞方法，新的请求进来之前会阻塞在这里
                 System.out.println("服务端等待连接建立中......");
-                Socket socket = serverSocket.accept();
+                socket = serverSocket.accept();
                 System.out.println("建立连接成功," + "客户端地址为： " + socket.getInetAddress() + ":" + socket.getPort());
                 InputStream inputStream = socket.getInputStream();
                 OutputStream outputStream = socket.getOutputStream();
@@ -42,18 +43,33 @@ public class HttpServer {
                 request.parse();
                 System.out.println("HTTP请求解析完成，URI为" + request.getUri());
 
-                // 将响应结果写回网络输出
+                // 构建响应对象
                 Response response = new Response(outputStream);
-                response.setRequest(request);
-                response.sendStaticResource();
-                System.out.println("将文本内容写回响应成功");
 
+                // 分不同资源类型处理请求逻辑
+                String uri = request.getUri();
+                if (uri.startsWith("/servlet")) {
+                    ServletProcessor servletProcessor = new ServletProcessor();
+                    servletProcessor.process(request,response);
+                }else {
+                    StaticResourceProcessor staticResourceProcessor = new StaticResourceProcessor();
+                    staticResourceProcessor.process(request, response);
+                }
+
+                System.out.println("请求处理完成");
                 // 关闭连接
                 socket.close();
             } catch (IOException e) {
                 e.printStackTrace();
+
+                if (socket != null && !socket.isClosed()) {
+                    try {
+                        socket.close();
+                    } catch (IOException ex) {
+                        e.printStackTrace();
+                    }
+                }
             }
         }
-
     }
 }
