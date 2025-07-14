@@ -95,6 +95,17 @@ Hello World!
 2. JVM 类加载方式
 
 
+# 3.0
+## 功能需求
+1. 引入servlet-api包中的Servlet接口并实现它
+2. 拆分连接器和处理器
+
+## 实现流程与相关知识点
+1. 通过Writer代替OutputStream写入（JAVA I/O编程，字符输出,PrintWriter，OutputStreamWriter,BufferedWriter）
+2. 分离Connector和Processor（单一职责原则）
+3. HttpConnector 实现Runnable接口，为后续多线程处理做铺垫
+
+
 
 
 

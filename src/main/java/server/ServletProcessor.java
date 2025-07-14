@@ -2,9 +2,10 @@ package server;
 
 import org.apache.commons.lang3.text.StrSubstitutor;
 
+import javax.servlet.Servlet;
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLStreamHandler;
@@ -33,7 +34,8 @@ public class ServletProcessor {
     public void process(Request request, Response response) throws IOException {
         // 获取URI，拼接完整的Java类名称
         String uri = request.getUri();
-        OutputStream outputStream = response.getOutputStream();
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        PrintWriter writer = response.getWriter();
         // 指定目录加载
         URLClassLoader loader = createClassLoader();
 
@@ -42,7 +44,8 @@ public class ServletProcessor {
 
         // 写响应头(这里未考虑业务执行失败的情况，都返回200)
         String responseHead = composeResponseHead();
-        outputStream.write(responseHead.getBytes(StandardCharsets.UTF_8));
+        // 此处必须用println，否则不会自动flush
+        writer.println(responseHead);
 
         // 调用Servlet实例方法，完成业务逻辑
         Servlet servlet = null;
@@ -79,11 +82,12 @@ public class ServletProcessor {
     private Class<?>  loadServletClassFromURI(URLClassLoader loader, String uri) {
         // 从URI中获取Servlet实例类的路径(最后一个 '/' 后面的路径即为Servlet名称)
         String servletName = uri.substring(uri.lastIndexOf("/") + 1);
+        System.out.println("servlet 实例类名: " + servletName);
         Class<?> servletClass = null;
         try {
             servletClass = loader.loadClass(servletName);
         } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
         return servletClass;
     }

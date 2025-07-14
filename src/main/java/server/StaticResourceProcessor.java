@@ -35,7 +35,7 @@ public class StaticResourceProcessor {
     public void process(Request request, Response response) throws IOException {
         // 获取uri(即文件资源路径)
         String uri = request.getUri();
-        OutputStream outputStream = response.getOutputStream();
+        OutputStream outputStream = response.getOutput();
 
         File file = new File(ServerConstant.WEB_ROOT + uri);
         FileInputStream fileInputStream = null;
