@@ -21,8 +21,13 @@ public class HelloServlet implements Servlet {
 
     @Override
     public void service(ServletRequest servletRequest, ServletResponse servletResponse) throws ServletException, IOException {
-        servletResponse.setCharacterEncoding("UTF-8");
-        String retMsg = String.format("当前时间为: %s", LocalDateTime.now());
+        try {
+            Thread.sleep(30000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        String retMsg = String.format("当前线程名为: %s, 当前时间为: %s", Thread.currentThread().getName(), LocalDateTime.now());
         servletResponse.getWriter().println(retMsg);
     }
 

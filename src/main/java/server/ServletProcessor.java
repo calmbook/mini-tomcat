@@ -19,11 +19,6 @@ import java.util.Map;
  * 根据URI定位Servlet实例，调用统一的service方法，完成动态资源获取（业务逻辑的执行）
  */
 public class ServletProcessor {
-    private static final int WRITE_BUFFER_SIZE = 1024;
-    private static final String WEB_ROOT = System.getProperty("user.dir")
-            + File.separator
-            + "webroot";
-
     private static String OKMessage = "HTTP/1.1 ${StatusCode} ${StatusName}\r\n" +
             "Content-Type: ${ContentType}\r\n" +
             "Content-Length: ${ContentLength}\r\n" +

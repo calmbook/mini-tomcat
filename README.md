@@ -1,3 +1,5 @@
+[TOC]
+
 # mini-tomcat
 从零开始写一个简易版本的tomcat
 
@@ -104,6 +106,44 @@ Hello World!
 1. 通过Writer代替OutputStream写入（JAVA I/O编程，字符输出,PrintWriter，OutputStreamWriter,BufferedWriter）
 2. 分离Connector和Processor（单一职责原则）
 3. HttpConnector 实现Runnable接口，为后续多线程处理做铺垫
+
+
+# 4.0 
+## 功能需求
+提升processor处理的性能
+
+用户在浏览器打开多个标签页，输入下面这个地址
+   ```
+      http://localhost:8080/servlet/test.HelloServlet
+   ```
+业务逻辑执行30s后，多个标签页均返回当前时间，并且应该几乎是同时返回的
+
+
+## 实现流程
+1. processor池化，减少对象创建及初始化的开销
+   极简版本池化，不考虑对象的销毁
+2. processor异步化处理，目前读取socket，处理业务这2个动作是同步进行的，处理业务时不能进行接收读取新的连接请求
+   通过异步化处理，将HTTP连接建立以及业务处理请求的线程分开
+
+   这要求业务线程处理完成之后通知主线程，涉及到线程同步（等待-通知）
+### processor 池
+1. 初始化（最小数量初始化），使用队列进行存储(应该使用哪种数据结构进行存储呢？存取的方式应该是什么策略？)
+2. 分配与归还（池中有就从池里拿，没有就临时新建一个，直至达到最大线程数量之后，拒绝新的业务请求）
+   注意是临时新建，即不存入池中，没有做线程池那种基于存活时间销毁的功能
+
+
+### processor异步处理
+1. processor 实现Runnable接口，初始化时start启动线程，while循环一直等待socket连接
+
+   为什么不用JDK的线程池（因为线程池核心线程池满了之后，默认会进入队列等待，I/O密集型的应用实际上没必要等待，有突发流量的时候直接创建新的线程
+响应速度）
+2. connector 不再直接调用processor的线程池，仅仅传入socket连接后就返回，从而可以同时处理多个http请求
+3. processor 和 connector之间的线程同步通过wait-notify加一个状态位控制，详见HttpProcessor注释说明   
+
+## 相关知识点
+1. 池化思想
+2. 异步化处理
+3. 线程同步机制，wait-notify（需要加上while循环，避免虚假唤醒）
 
 
 

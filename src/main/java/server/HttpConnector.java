@@ -6,12 +6,15 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class HttpConnector implements Runnable{
+    private HttpProcessorPool processorPool = new HttpProcessorPool(10, 20);
+
     public void start() {
         new Thread(this).start();
     }
 
     @Override
     public void run() {
+        processorPool.init();
         // 循环接收网络请求，建立连接（目前只考虑一个端口）
         ServerSocket serverSocket = null;
         try {
@@ -34,12 +37,14 @@ public class HttpConnector implements Runnable{
                 socket = serverSocket.accept();
                 System.out.println("建立连接成功," + "客户端地址为： " + socket.getInetAddress() + ":" + socket.getPort());
 
-                HttpProcessor httpProcessor = new HttpProcessor();
-                httpProcessor.process(socket);
+                // processor异步化处理
+                // 不直接调用process处理业务逻辑，仅仅把socket传进去，由processor线程异步处理
+                HttpProcessor httpProcessor = processorPool.getProcessor();
+                httpProcessor.assign(socket);
 
                 System.out.println("请求处理完成");
-                // 关闭连接
-                socket.close();
+                // processor 异步处理后，socket需要由业务线程自己关闭
+//                socket.close();
             } catch (IOException e) {
                 e.printStackTrace();
 
