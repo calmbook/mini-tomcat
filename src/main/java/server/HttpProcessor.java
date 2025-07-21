@@ -95,8 +95,8 @@ public class HttpProcessor implements Runnable {
             OutputStream outputStream = socket.getOutputStream();
             // 读取数据，基于HTTP协议解析请求,得到URI，输入参数等关键值（这里只解析URI）
             // request从网络读取数据时也是阻塞的，没有数据会一直等
-            Request request = new Request(inputStream);
-            request.parse();
+            HttpRequest request = new HttpRequest(inputStream);
+            request.parse(socket);
             if (request.getUri() == null) {
                 System.out.println("请求资源路径解析异常");
                 return;

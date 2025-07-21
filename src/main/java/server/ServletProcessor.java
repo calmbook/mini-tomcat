@@ -26,7 +26,7 @@ public class ServletProcessor {
             "Date: ${ZonedDateTime}\r\n" +
             "\r\n";
 
-    public void process(Request request, Response response) throws IOException {
+    public void process(HttpRequest request, Response response) throws IOException {
         // 获取URI，拼接完整的Java类名称
         String uri = request.getUri();
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());

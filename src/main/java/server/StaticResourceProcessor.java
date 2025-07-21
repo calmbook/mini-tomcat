@@ -32,7 +32,7 @@ public class StaticResourceProcessor {
             "\r\n";
 
 
-    public void process(Request request, Response response) throws IOException {
+    public void process(HttpRequest request, Response response) throws IOException {
         // 获取uri(即文件资源路径)
         String uri = request.getUri();
         OutputStream outputStream = response.getOutput();
