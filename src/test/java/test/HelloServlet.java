@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 
+import static javax.servlet.http.HttpServletResponse.SC_OK;
+
 public class HelloServlet implements Servlet {
 
     @Override

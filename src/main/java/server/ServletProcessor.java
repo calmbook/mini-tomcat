@@ -5,7 +5,6 @@ import org.apache.commons.lang3.text.StrSubstitutor;
 import javax.servlet.Servlet;
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLStreamHandler;
@@ -14,6 +13,9 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
+
+import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+import static javax.servlet.http.HttpServletResponse.SC_OK;
 
 /**
  * 根据URI定位Servlet实例，调用统一的service方法，完成动态资源获取（业务逻辑的执行）
@@ -26,31 +28,34 @@ public class ServletProcessor {
             "Date: ${ZonedDateTime}\r\n" +
             "\r\n";
 
-    public void process(HttpRequest request, Response response) throws IOException {
+    public void process(HttpRequest request, HttpResponse response) throws IOException {
         // 获取URI，拼接完整的Java类名称
         String uri = request.getUri();
-        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        PrintWriter writer = response.getWriter();
         // 指定目录加载
         URLClassLoader loader = createClassLoader();
 
-        // 加载业务类，构建Servlet实例
-        Class<?> servletClass = loadServletClassFromURI(loader, uri);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
 
-        // 写响应头(这里未考虑业务执行失败的情况，都返回200)
-        String responseHead = composeResponseHead();
-        // 此处必须用println，否则不会自动flush
-        writer.println(responseHead);
+        // 业务执行成功响应
+        // 这里如果业务执行失败了，成功响应也会发出去了，是有问题的
+        // tomcat中的解决方案是设置一个状态位，然后包装了一下PrintWriter，不是每次println都flush，而是缓存满了才flush，flush之后修改状态位，不能再修改Header
+        // 当然这里简单的把getWriter中的autoFlush关掉也可以实现延迟发送响应头的效果（但不能避免用户修改响应头之后重复发送），PrintWriter自带缓存，不会每次都flush的
+        setSuccessResponseHead(response);
+        response.sendHeaders();
 
-        // 调用Servlet实例方法，完成业务逻辑
-        Servlet servlet = null;
         try {
+            // 加载业务类，构建Servlet实例
+            Class<?> servletClass = loadServletClassFromURI(loader, uri);
+            // 调用Servlet实例方法，完成业务逻辑
+            Servlet servlet = null;
             servlet = (Servlet) servletClass.newInstance();
-            servlet.service(request,response);
+            // 使用门面模式封装，避免业务应用强转request,response
+            HttpRequestFacade requestFacade = new HttpRequestFacade(request);
+            HttpResponseFacade responseFacade = new HttpResponseFacade(response);
+            servlet.service(requestFacade,responseFacade);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
     private static URLClassLoader createClassLoader() {
@@ -83,10 +88,16 @@ public class ServletProcessor {
             servletClass = loader.loadClass(servletName);
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
+            throw new RuntimeException(String.format("servlet类[%s]未找到", servletName));
         }
         return servletClass;
     }
 
+    private void setSuccessResponseHead(HttpResponse response) {
+        response.setStatus(SC_OK);
+        response.setHeader("Content-Type", "text/html;charset=utf-8");
+    }
+    
     private String composeResponseHead() {
         Map<String, Object> valuesMap = new HashMap<>();
         valuesMap.put("StatusCode", "200");

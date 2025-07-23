@@ -104,7 +104,7 @@ public class HttpProcessor implements Runnable {
             System.out.println("HTTP请求解析完成，URI为" + request.getUri());
 
             // 构建响应对象
-            Response response = new Response(outputStream);
+            HttpResponse response = new HttpResponse(outputStream);
 
             // 分不同资源类型处理请求逻辑
             String uri = request.getUri();
