@@ -1,15 +1,56 @@
 package server;
 
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class HttpConnector implements Runnable{
+
     private HttpProcessorPool processorPool = new HttpProcessorPool(10, 20);
+
+    public static Map<String, HttpSession> sessions = new ConcurrentHashMap<>();
 
     public void start() {
         new Thread(this).start();
+    }
+
+    //创建新的session
+    public static Session createSession() {
+        Session session = new Session();
+        session.setValid(true);
+        session.setCreationTime(System.currentTimeMillis());
+        String sessionId = generateSessionId();
+        session.setId(sessionId);
+        sessions.put(sessionId, session);
+        return (session);
+    }
+    //以随机方式生成byte数组,形成sessionid
+    protected static synchronized String generateSessionId() {
+        Random random = new Random();
+        long seed = System.currentTimeMillis();
+        random.setSeed(seed);
+        byte bytes[] = new byte[16];
+        random.nextBytes(bytes);
+        StringBuffer result = new StringBuffer();
+        for (int i = 0; i < bytes.length; i++) {
+            byte b1 = (byte) ((bytes[i] & 0xf0) >> 4);
+            byte b2 = (byte) (bytes[i] & 0x0f);
+            if (b1 < 10)
+                result.append((char) ('0' + b1));
+            else
+                result.append((char) ('A' + (b1 - 10)));
+            if (b2 < 10)
+                result.append((char) ('0' + b2));
+            else
+                result.append((char) ('A' + (b2 - 10)));
+        }
+        return (result.toString());
     }
 
     @Override

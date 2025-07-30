@@ -3,14 +3,12 @@ package server;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class HttpResponse implements HttpServletResponse {
@@ -24,9 +22,12 @@ public class HttpResponse implements HttpServletResponse {
     String characterEncoding = null;
     String protocol = "HTTP/1.1";
 
+    // 目前还没太搞明白，为什么这里要用ConcurrentHashMap，会有多个线程同时操作HttpResponse嘛？
     Map<String, String> headers = new ConcurrentHashMap<>();
     String message = getStatusMessage(HttpServletResponse.SC_OK);
     int status = HttpServletResponse.SC_OK;
+
+    List<Cookie> cookies = new ArrayList<>();
 
     public HttpResponse(OutputStream output) {
         this.output = output;
@@ -93,6 +94,31 @@ public class HttpResponse implements HttpServletResponse {
             outputWriter.print(": ");
             outputWriter.print(value);
             outputWriter.print("\r\n");
+        }
+
+        // 设置sessionId的cookie
+        HttpSession session = this.request.getSession(false);
+        if (session != null) {
+            Cookie cookie = new Cookie(DefaultHeaders.JSESSIONID_NAME, session.getId());
+            cookie.setMaxAge(-1);
+            addCookie(cookie);
+        }
+
+        // 将Cookie信息写入到Response中去
+        // exp：Set-Cookie: jsessionid=FA73014B317A489994D0B394F4EBF4EA
+        // Set-Cookie可重复
+        synchronized (cookies) {
+            Iterator<Cookie> items = cookies.iterator();
+            while (items.hasNext()) {
+                Cookie cookie = (Cookie) items.next();
+                outputWriter.print(CookieTools.getCookieHeaderName(cookie));
+                outputWriter.print(": ");
+                StringBuffer sbValue = new StringBuffer();
+                CookieTools.getCookieHeaderValue(cookie, sbValue);
+                System.out.println("set cookie jsessionid string : "+sbValue.toString());
+                outputWriter.print(sbValue.toString());
+                outputWriter.print("\r\n");
+            }
         }
         outputWriter.print("\r\n");
         outputWriter.flush();
@@ -187,11 +213,13 @@ public class HttpResponse implements HttpServletResponse {
     }
 
     @Override
-    public void addCookie(Cookie arg0) {
+    public void addCookie(Cookie cookie) {
+        cookies.add(cookie);
     }
 
     @Override
     public void addDateHeader(String arg0, long arg1) {
+
     }
 
     @Override

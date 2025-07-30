@@ -1,10 +1,12 @@
 package server;
 
+import javax.servlet.ReadListener;
+import javax.servlet.ServletInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * 解析请求首行及请求头
+ * 解析请求首行，请求头，请求参数
  *
  * exp:
  *
@@ -15,7 +17,7 @@ import java.io.InputStream;
  * Accept-Language: en-US,en;q=0.9
  * Connection: keep-alive
  */
-public class SocketInputStream extends InputStream {
+public class SocketInputStream extends ServletInputStream {
     private static final byte CR = (byte) '\r';
     private static final byte LF = (byte) '\n';
     private static final byte SP = (byte) ' ';
@@ -144,7 +146,7 @@ public class SocketInputStream extends InputStream {
             pos--;
         }
 
-        // Reading the header value
+        // Reading the header name
         parseHeaderNameOfLine(header);
 
         // Reading the header value (which can be spanned over multiple lines)
@@ -304,5 +306,20 @@ public class SocketInputStream extends InputStream {
         if (nRead > 0) {
             count = nRead;
         }
+    }
+
+    @Override
+    public boolean isFinished() {
+        return false;
+    }
+
+    @Override
+    public boolean isReady() {
+        return false;
+    }
+
+    @Override
+    public void setReadListener(ReadListener readListener) {
+
     }
 }

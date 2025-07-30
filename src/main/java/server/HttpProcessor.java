@@ -97,6 +97,12 @@ public class HttpProcessor implements Runnable {
             // request从网络读取数据时也是阻塞的，没有数据会一直等
             HttpRequest request = new HttpRequest(inputStream);
             request.parse(socket);
+
+            // handle session
+            if (request.getSessionId() == null || request.getSessionId().equals("")) {
+                request.getSession(true);
+            }
+
             if (request.getUri() == null) {
                 System.out.println("请求资源路径解析异常");
                 return;
@@ -105,6 +111,7 @@ public class HttpProcessor implements Runnable {
 
             // 构建响应对象
             HttpResponse response = new HttpResponse(outputStream);
+            response.setRequest(request);
 
             // 分不同资源类型处理请求逻辑
             String uri = request.getUri();
