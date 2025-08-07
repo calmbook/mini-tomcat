@@ -113,16 +113,19 @@ public class SocketInputStream extends ServletInputStream {
         requestLine.methodEnd = readCount - 1;
     }
 
-    private void findFirstNonCROrLFIndex() {
+    private void findFirstNonCROrLFIndex() throws IOException{
         int chr = 0;
         do {
             try {
                 chr = read();
             } catch (IOException e) {
+                throw e;
             }
         } while ((chr == CR) || (chr == LF));
-        // 当前字节是换行符，所以将索引位置回退一个字节
-        pos--;
+        // 如果pos小于等于0，说明根本没走循环，当前字节是换行符，所以将索引位置回退一个字节
+        if (pos > 0) {
+            pos--;
+        }
     }
 
     public void readHeader(HttpHeader header)

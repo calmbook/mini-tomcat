@@ -30,6 +30,7 @@ public class HttpRequest implements HttpServletRequest {
 
     private Cookie[] cookies;
     private SessionFacade sessionFacade;
+    private HttpResponse response;
 
     public HttpRequest(InputStream input) {
         this.socketInputStream = new SocketInputStream(input, 2048);
@@ -60,8 +61,8 @@ public class HttpRequest implements HttpServletRequest {
     private void parseRequestLine() {
         int questionIndex = requestLine.indexOf("?");
         if (questionIndex != -1) {
-            this.uri = new String(requestLine.uri, 0, questionIndex - 1);
-            this.queryString = new String(requestLine.uri);
+            this.uri = new String(requestLine.uri, 0, questionIndex);
+            this.queryString = new String(requestLine.uri, questionIndex + 1, requestLine.uriEnd);
         } else {
             this.uri = new String(requestLine.uri, 0, requestLine.uriEnd);
         }
@@ -102,6 +103,12 @@ public class HttpRequest implements HttpServletRequest {
                         this.sessionid = cookie.getValue();
                     }
                 }
+            } else if (name.equals(DefaultHeaders.CONNECTION_NAME)) {
+                if (value.equals("close")) {
+                    response.setHeader("Connection", "close");
+                }
+            } else if (name.equals(DefaultHeaders.TRANSFER_ENCODING_NAME)) {
+                response.setHeader("Transfer-Encoding", value);
             }
 
 
@@ -337,6 +344,10 @@ public class HttpRequest implements HttpServletRequest {
 
     public String getUri() {
         return this.uri;
+    }
+
+    public void setResponse(HttpResponse response) {
+        this.response = response;
     }
 
     @Override

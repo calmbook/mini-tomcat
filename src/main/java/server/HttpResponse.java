@@ -86,6 +86,7 @@ public class HttpResponse implements HttpServletResponse {
         if (getContentLength() >= 0) {
             outputWriter.print("Content-Length: " + getContentLength() + "\r\n");
         }
+        headers.put("Transfer-Encoding", "chunked");
         Iterator<String> names = headers.keySet().iterator();
         while (names.hasNext()) {
             String name = names.next();

@@ -187,9 +187,107 @@ Hello World!
    1. Cookie也是一个Header，只不过比较特殊，Cookie可以有多个值，存储为一个数组
 
 
+# 8.0
+## 功能需求
+1. 现在每一个请求都是短连接，请求结束之后TCP连接就关掉了，连接的保持和关闭要求可以通过请求头进行控制
+2. 分块传输（用于处理动态返回的内容，也就是在执行servlet之前无法确定返回内容的大小，但是静态内容，如文件图片是可以知道的，操作系统本身存储了相关的元数据）
 
 
+### 实现效果
+1. 用户在浏览器中输入`http://localhost:8080/servlet/test.TestServlet1?name=lw`
+2. 页面返回"Hello"（实际写入的内容是 5\r\nHello\r\n0\r\n\r\n，返回内容符合分块传输的格式即可）
+3. 通过wireshark捕获loopback traffic 筛选 `tcp.port == 8080`，可以观察到一次请求完成之后，请求并没有断开，并且TCP自身在发Keep-Alive心跳
+4. 在浏览器中同一个标签页再次访问，可以看到并没有建立新的连接，而是在原有的连接上继续发送（可以通过四元组确定连接信息）
+5. 在第3次访问时，服务端就会主动断开连接（在wireshark中也可以看到服务端主动发送FIN信号）
+
+## 相关知识点
+### Connection
+以下内容均来自MDN
+#### 概述
+```
+Connection 通用标头控制网络连接在当前会话完成后是否仍然保持打开状态。如果发送的值是 keep-alive，则连接是持久的，不会关闭，允许对同一服务器进行后续请求。
+```
+#### 语法
+```
+Connection: keep-alive
+Connection: close
+```
+参数说明
+- close
+表明客户端或服务器想要关闭该网络连接，这是 HTTP/1.0 请求的默认值
+
+- 以逗号分隔的 HTTP 头 [通常仅有 keep-alive]
+表明客户端想要保持该网络连接打开，HTTP/1.1 的请求默认使用一个持久连接。这个请求头列表由头部名组成，这些头将被第一个非透明的代理或者代理间的缓存所移除：这些头定义了发出者和第一个实体之间的连接，而不是和目的地节点间的连接。
+
+### Keep-Alive
+以下内容均来自MDN
+#### 概述
+```
+HTTP/1.0 默认在每次请求/响应交互后关闭连接，因此 HTTP/1.0 中的持久连接必须经过明确协商。一些客户端和服务器可能希望与以前的持久连接方式兼容，可以使用 Connection: keep-alive 请求标头来实现这一点。连接的其他参数可通过 Keep-Alive 标头请求。
+```
+
+#### 语法
+`Keep-Alive: <parameters>`
+参数说明
+- timeout
+指定了主机允许空闲连接保持打开状态的时长（以秒为单位的整数）。当主机没有接收或发送数据时，就认为连接是空闲的。主机可以保持连接超过 timeout 秒，但应该确保至少保持连接 timeout 秒。
+- max
+在此连接关闭之前，可以发送的请求的最大值。在非管道连接中，除了 0 以外，这个值是被忽略的，因为需要在紧跟着的响应中发送新一次的请求。HTTP 管道连接则可以用它来限制管道的使用。
 
 
+#### 示例
+```
+HTTP/1.1 200 OK
+Connection: Keep-Alive
+Content-Encoding: gzip
+Content-Type: text/html; charset=utf-8
+Date: Thu, 11 Aug 2016 15:23:13 GMT
+Keep-Alive: timeout=5, max=200
+Last-Modified: Mon, 25 Jul 2016 04:32:39 GMT
+Server: Apache
+
+(body)
+```
+
+#### 处理流程
+- 客户端/服务端均支持Keep-Alive
+1. 请求头中带上Connection: Keep-Alive，表示客户端希望进行连接复用
+2. 服务端如果支持连接复用，则会返回Connection: Keep-Alive，告诉客户端服务端支持此项功能（还可能返回超时时间以及请求数）
+3. 服务端keep-alive超时或者请求数达到上线后关闭socket连接
+
+- 服务不支持连接复用
+1. 服务端不支持连接复用会忽略Connection: Keep-Alive，直接关闭socket连接
+
+- 客户端不支持连接复用
+1. 服务端默认开启了keep-alive，但是客户端不支持的话，客户端携带Connection:close
+2. 服务端识别到Connection:close之后直接关闭连接
+
+
+### 分块编码传输
+分块编码主要应用于如下场景，即要传输大量的数据，但是在请求在没有被处理完之前响应的长度是无法获得的。例如，当需要用从数据库中查询获得的数据生成一个大的 HTML 表格的时候，或者需要传输大量的图片的时候。一个分块响应形式如下：
+
+#### 示例
+```
+HTTP/1.1 200 OK
+Content-Type: text/plain
+Transfer-Encoding: chunked
+
+7\r\n
+Mozilla\r\n
+11\r\n
+Developer Network\r\n
+0\r\n
+\r\n
+```
+
+### TCP KeepAlive
+服务端不关闭Socket连接，但是TCP自身会进行心跳探活，超时后客户端会发起关闭连接的请求
+
+## 实现思路
+当前版本暂时不处理超时断连以及最大请求数功能
+1. 在request解析header时将connection的值（keep-alive or close）解析出来放入连接器中
+2. 在processor处理时基于keepAlive判断是否需要关闭连接
+
+ps: 当前版本中写死了传输格式 Transfer-Encoding: chunked（实际上应该根据返回内容的类型进行判断）
 
 

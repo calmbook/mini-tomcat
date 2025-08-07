@@ -95,7 +95,7 @@ public class ServletProcessor {
 
     private void setSuccessResponseHead(HttpResponse response) {
         response.setStatus(SC_OK);
-        response.setHeader("Content-Type", "text/html;charset=utf-8");
+        response.setHeader("Content-Type", "text/plain;charset=utf-8");
     }
     
     private String composeResponseHead() {

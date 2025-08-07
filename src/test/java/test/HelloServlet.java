@@ -23,11 +23,11 @@ public class HelloServlet implements Servlet {
 
     @Override
     public void service(ServletRequest servletRequest, ServletResponse servletResponse) throws ServletException, IOException {
-        try {
-            Thread.sleep(30000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            Thread.sleep(30000);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
 
         String retMsg = String.format("当前线程名为: %s, 当前时间为: %s", Thread.currentThread().getName(), LocalDateTime.now());
         servletResponse.getWriter().println(retMsg);

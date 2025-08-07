@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
+import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+
 public class HttpProcessor implements Runnable {
     private Socket socket;
 
@@ -12,6 +14,8 @@ public class HttpProcessor implements Runnable {
     private boolean hasNewSocket = false;
 
     private final HttpProcessorPool processorPool;
+
+    private boolean keepAlive = false;
 
     public HttpProcessor(HttpProcessorPool processorPool) {
         this.processorPool = processorPool;
@@ -90,42 +94,67 @@ public class HttpProcessor implements Runnable {
     }
 
     public void process(Socket socket) {
+        InputStream inputStream = null;
+        OutputStream outputStream =null;
+        // 读取数据，基于HTTP协议解析请求,得到URI，输入参数等关键值（这里只解析URI）
+        // request从网络读取数据时也是阻塞的，没有数据会一直等
+        HttpRequest request =null;
+        // 构建响应对象
+        HttpResponse response =null;
         try {
-            InputStream inputStream = socket.getInputStream();
-            OutputStream outputStream = socket.getOutputStream();
-            // 读取数据，基于HTTP协议解析请求,得到URI，输入参数等关键值（这里只解析URI）
-            // request从网络读取数据时也是阻塞的，没有数据会一直等
-            HttpRequest request = new HttpRequest(inputStream);
-            request.parse(socket);
+            inputStream = socket.getInputStream();
+             outputStream = socket.getOutputStream();
+            keepAlive = true;
 
-            // handle session
-            if (request.getSessionId() == null || request.getSessionId().equals("")) {
-                request.getSession(true);
+            while(keepAlive) {
+                // 读取数据，基于HTTP协议解析请求,得到URI，输入参数等关键值（这里只解析URI）
+                // request从网络读取数据时也是阻塞的，没有数据会一直等
+                request = new HttpRequest(inputStream);
+                // 构建响应对象
+                response = new HttpResponse(outputStream);
+                request.setResponse(response);
+                request.parse(socket);
+
+                // handle session
+                if (request.getSessionId() == null || request.getSessionId().equals("")) {
+                    request.getSession(true);
+                }
+
+                if (request.getUri() == null) {
+                    System.out.println("请求资源路径解析异常");
+                    break;
+                }
+                System.out.println("HTTP请求解析完成，URI为" + request.getUri());
+                response.setRequest(request);
+
+                // 分不同资源类型处理请求逻辑
+                String uri = request.getUri();
+
+                if (uri.startsWith("/servlet")) {
+                    ServletProcessor servletProcessor = new ServletProcessor();
+                    servletProcessor.process(request,response);
+                }else {
+                    StaticResourceProcessor staticResourceProcessor = new StaticResourceProcessor();
+                    staticResourceProcessor.process(request, response);
+                }
+
+                // 此处先简单设置成utf-8，实际应该读取请求头
+                response.setCharacterEncoding("UTF-8");
+                // 因为socket不一定会被关闭，所以强制flush一次，保证本次响应发送完成
+                response.getWriter().flush();
+
+                if ("close".equals(response.getHeader("Connection"))) {
+                    keepAlive = false;
+                }
             }
 
-            if (request.getUri() == null) {
-                System.out.println("请求资源路径解析异常");
-                return;
-            }
-            System.out.println("HTTP请求解析完成，URI为" + request.getUri());
-
-            // 构建响应对象
-            HttpResponse response = new HttpResponse(outputStream);
-            response.setRequest(request);
-
-            // 分不同资源类型处理请求逻辑
-            String uri = request.getUri();
-
-            if (uri.startsWith("/servlet")) {
-                ServletProcessor servletProcessor = new ServletProcessor();
-                servletProcessor.process(request,response);
-            }else {
-                StaticResourceProcessor staticResourceProcessor = new StaticResourceProcessor();
-                staticResourceProcessor.process(request, response);
-            }
         } catch (IOException e) {
-            // 后续可以调整成返回500错误响应
-            e.printStackTrace();
+            response.setStatus(SC_INTERNAL_SERVER_ERROR);
+            try {
+                response.sendHeaders();
+            } catch (IOException ex) {
+                e.printStackTrace();
+            }
         }
     }
 }
