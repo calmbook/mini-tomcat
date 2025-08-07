@@ -60,8 +60,8 @@ public class HttpRequest implements HttpServletRequest {
     private void parseRequestLine() {
         int questionIndex = requestLine.indexOf("?");
         if (questionIndex != -1) {
-            this.uri = new String(requestLine.uri, 0, questionIndex - 1);
-            this.queryString = new String(requestLine.uri);
+            this.uri = new String(requestLine.uri, 0, questionIndex);
+            this.queryString = new String(requestLine.uri, questionIndex + 1, requestLine.uriEnd);
         } else {
             this.uri = new String(requestLine.uri, 0, requestLine.uriEnd);
         }
