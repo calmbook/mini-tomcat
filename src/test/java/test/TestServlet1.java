@@ -6,9 +6,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.util.Date;
 
 public class TestServlet1 extends HttpServlet{
     private static final long serialVersionUID = 1L;
@@ -48,8 +47,9 @@ public class TestServlet1 extends HttpServlet{
                 .append("\r\n")
                 .append("0\r\n\r\n");
         System.out.println("分块传输内容: " + builder);
-        response.getWriter().println(builder);
-//        response.getWriter().flush();
+        PrintWriter writer = response.getWriter();
+        writer.print(builder);
+        writer.flush();
     }
     public void doPost(HttpServletRequest request, HttpServletResponse response)throws ServletException, IOException {
         System.out.println("Enter doGet()");

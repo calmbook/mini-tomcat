@@ -168,6 +168,9 @@ public class HttpResponse implements HttpServletResponse {
 
     @Override
     public PrintWriter getWriter() throws IOException {
+        if (writer != null) {
+            return writer;
+        }
         writer = new PrintWriter(new OutputStreamWriter(output, getCharacterEncoding()), true);
         return writer;
     }
