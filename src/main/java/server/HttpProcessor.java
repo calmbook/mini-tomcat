@@ -1,5 +1,6 @@
 package server;
 
+import javax.servlet.ServletException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -17,8 +18,18 @@ public class HttpProcessor implements Runnable {
 
     private boolean keepAlive = false;
 
+    private ServletContainer servletContainer;
+
     public HttpProcessor(HttpProcessorPool processorPool) {
         this.processorPool = processorPool;
+    }
+
+    public ServletContainer getServletContainer() {
+        return servletContainer;
+    }
+
+    public void setServletContainer(ServletContainer servletContainer) {
+        this.servletContainer = servletContainer;
     }
 
     @Override
@@ -113,6 +124,10 @@ public class HttpProcessor implements Runnable {
                 // 构建响应对象
                 response = new HttpResponse(outputStream);
                 request.setResponse(response);
+
+                // 此处先简单设置成utf-8，实际应该读取请求头
+                response.setCharacterEncoding("UTF-8");
+
                 request.parse(socket);
 
                 // handle session
@@ -127,19 +142,20 @@ public class HttpProcessor implements Runnable {
                 System.out.println("HTTP请求解析完成，URI为" + request.getUri());
                 response.setRequest(request);
 
+
+                response.sendHeaders();
+
                 // 分不同资源类型处理请求逻辑
                 String uri = request.getUri();
 
                 if (uri.startsWith("/servlet")) {
-                    ServletProcessor servletProcessor = new ServletProcessor();
+                    ServletProcessor servletProcessor = new ServletProcessor(this.servletContainer);
                     servletProcessor.process(request,response);
                 }else {
                     StaticResourceProcessor staticResourceProcessor = new StaticResourceProcessor();
                     staticResourceProcessor.process(request, response);
                 }
 
-                // 此处先简单设置成utf-8，实际应该读取请求头
-                response.setCharacterEncoding("UTF-8");
                 // 因为socket不一定会被关闭，所以强制flush一次，保证本次响应发送完成
                 response.getWriter().flush();
 
@@ -148,7 +164,7 @@ public class HttpProcessor implements Runnable {
                 }
             }
 
-        } catch (IOException e) {
+        } catch (IOException | ServletException e) {
             response.setStatus(SC_INTERNAL_SERVER_ERROR);
             try {
                 response.sendHeaders();

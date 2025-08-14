@@ -16,6 +16,8 @@ public class HttpConnector implements Runnable{
 
     public static Map<String, HttpSession> sessions = new ConcurrentHashMap<>();
 
+    private ServletContainer servletContainer = new ServletContainer();
+
     public void start() {
         new Thread(this).start();
     }
@@ -81,6 +83,7 @@ public class HttpConnector implements Runnable{
                 // processor异步化处理
                 // 不直接调用process处理业务逻辑，仅仅把socket传进去，由processor线程异步处理
                 HttpProcessor httpProcessor = processorPool.getProcessor();
+                httpProcessor.setServletContainer(servletContainer);
                 httpProcessor.assign(socket);
 
                 System.out.println("请求处理完成");
@@ -98,5 +101,13 @@ public class HttpConnector implements Runnable{
                 }
             }
         }
+    }
+
+    public ServletContainer getServletContainer() {
+        return servletContainer;
+    }
+
+    public void setServletContainer(ServletContainer servletContainer) {
+        this.servletContainer = servletContainer;
     }
 }

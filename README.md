@@ -291,3 +291,11 @@ Developer Network\r\n
 ps: 当前版本中写死了传输格式 Transfer-Encoding: chunked（实际上应该根据返回内容的类型进行判断）
 
 
+# 9.0
+## 功能需求
+1. URL loader调整为全局可用;Servlet Class及其服务实例复用
+2. 简化Servlet Processor
+3. 引入Container和Connector
+   1. Container负责Servlet管理
+   2. Connector负责通信管理
+
