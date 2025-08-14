@@ -295,7 +295,10 @@ ps: 当前版本中写死了传输格式 Transfer-Encoding: chunked（实际上�
 ## 功能需求
 1. URL loader调整为全局可用;Servlet Class及其服务实例复用
 2. 简化Servlet Processor
-3. 引入Container和Connector
+3. 引入Container，对Connector进行职责分离
    1. Container负责Servlet管理
    2. Connector负责通信管理
+4. 引入ServletWrapper，对Servlet的生命周期（加载，初始化，调用，销毁等）
+
+
 
